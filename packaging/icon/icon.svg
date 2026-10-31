@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b3445"/>
+      <stop offset="1" stop-color="#161b25"/>
+    </linearGradient>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#bg)"/>
+  <!-- the deck: two cards behind the front one -->
+  <rect x="300" y="236" width="424" height="520" rx="56" fill="#3d4a63" transform="rotate(-10 512 496)"/>
+  <rect x="300" y="236" width="424" height="520" rx="56" fill="#55658a" transform="rotate(-4 512 496)"/>
+  <rect x="300" y="256" width="424" height="540" rx="56" fill="#f4f6fa"/>
+  <!-- branch mark on the front card -->
+  <g stroke="#4f6bed" stroke-width="34" stroke-linecap="round" fill="none">
+    <path d="M430 380 V676"/>
+    <path d="M594 420 C594 520 430 520 430 600"/>
+  </g>
+  <circle cx="430" cy="380" r="44" fill="#4f6bed"/>
+  <circle cx="430" cy="676" r="44" fill="#4f6bed"/>
+  <circle cx="594" cy="420" r="44" fill="#f59e0b"/>
+</svg>
