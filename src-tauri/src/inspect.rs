@@ -368,20 +368,7 @@ mod tests {
         )
         .unwrap();
         let got = include_paths(&cfg);
-<<<<<<< Updated upstream
-        let abs = PathBuf::from("/abs/work.inc");
-        let expected_abs = if abs.is_absolute() {
-            abs
-        } else {
-            dir.join("/abs/work.inc")
-        };
-        assert_eq!(
-            got,
-            vec![expected_abs, dir.join("relative.inc")]
-        );
-=======
         assert_eq!(got, vec![abs, dir.join("relative.inc")]);
->>>>>>> Stashed changes
         std::fs::remove_dir_all(&dir).ok();
     }
 }
