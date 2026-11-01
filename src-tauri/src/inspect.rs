@@ -354,14 +354,21 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("repodeck-inc-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let cfg = dir.join("gitconfig");
+        // An absolute path on this OS (C:\… on Windows), written with forward slashes as git
+        // configs do, since `\` is an escape character there.
+        let abs = dir.join("abs").join("work.inc");
+        let abs_in_config = abs.to_string_lossy().replace('\\', "/");
         std::fs::write(
             &cfg,
-            "[user]\n\tname = A\n\tpath = not-an-include\n\
-             [includeIf \"gitdir:~/work/\"]\n\tpath = \"/abs/work.inc\"\n\
-             [include]\n\tpath = relative.inc\n",
+            format!(
+                "[user]\n\tname = A\n\tpath = not-an-include\n\
+                 [includeIf \"gitdir:~/work/\"]\n\tpath = \"{abs_in_config}\"\n\
+                 [include]\n\tpath = relative.inc\n"
+            ),
         )
         .unwrap();
         let got = include_paths(&cfg);
+<<<<<<< Updated upstream
         let abs = PathBuf::from("/abs/work.inc");
         let expected_abs = if abs.is_absolute() {
             abs
@@ -372,6 +379,9 @@ mod tests {
             got,
             vec![expected_abs, dir.join("relative.inc")]
         );
+=======
+        assert_eq!(got, vec![abs, dir.join("relative.inc")]);
+>>>>>>> Stashed changes
         std::fs::remove_dir_all(&dir).ok();
     }
 }
