@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { terms } from "$lib/terminal.svelte";
   import { api } from "$lib/api";
   import { app, type GroupBy } from "$lib/state.svelte";
   import RepoList from "./RepoList.svelte";
@@ -61,7 +62,25 @@
     return !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
   }
 
+  function openTerminal(id: number) {
+    app.view = "repos";
+    app.selectedId = id;
+    app.detailOpen = true;
+    terms.show(id);
+  }
+
   function onKey(e: KeyboardEvent) {
+    // Ctrl+` / ⌘`: show or hide the terminal of the open repo.
+    if ((e.ctrlKey || e.metaKey) && e.key === "`") {
+      e.preventDefault();
+      const r = app.selected;
+      if (!r) return;
+      if (app.detailOpen && app.view === "repos") terms.toggle(r.id);
+      else openTerminal(r.id);
+      return;
+    }
+    // Everything else typed into the terminal belongs to the shell (Esc for vim, ⌘K to clear…).
+    if ((e.target as HTMLElement | null)?.closest?.(".xterm")) return;
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
       e.preventDefault();
       app.view = "repos";
@@ -105,6 +124,9 @@
     if (e.key === "o" || e.key === "O") {
       e.preventDefault();
       app.run(() => api.openInEditor(r.id));
+    } else if (e.key === "t" || e.key === "T") {
+      e.preventDefault();
+      openTerminal(r.id);
     } else if (e.key === "g" || e.key === "G") {
       e.preventDefault();
       if (r.remote?.web_url) app.run(() => api.openOnGithub(r.id));

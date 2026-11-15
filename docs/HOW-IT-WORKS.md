@@ -302,6 +302,27 @@ default) and caches the laid-out result until the repo's fingerprint changes. Cl
 see the files it changed. The Overview tab also shows who authored recent commits, which is handy
 for spotting the wrong email.
 
+## Built-in terminal
+
+**Terminal** (`T`, or `` ⌘` `` / `` Ctrl+` ``) sits next to Open in VS Code in the repo panel. It
+opens a real shell already in the repo's folder, in place of the Overview / Commit graph /
+Technical tabs. Click the button again to go back to the tabs.
+
+- **Which shell:** your login shell (`$SHELL -l`) on macOS and Linux, PowerShell on Windows. Set a
+  different one in Settings → Terminal (for example `fish` or `pwsh`).
+- **Which account:** the shell is an ordinary shell in the repo, so `git commit` and `git push`
+  use the same identity and key that RepoDeck shows. The bar above the terminal repeats it:
+  "commits as Work <you@work.com>".
+- **Sessions persist:** each repo has its own shell. It keeps running, with its scrollback, while
+  you look at other repos, close the panel, or open Accounts or Settings. Repos with a running
+  shell show a `>_` mark in the list. **✕** in the terminal bar ends the shell; quitting RepoDeck
+  ends them all.
+- **When a shell exits** (for example after `exit`), the terminal says so and Enter starts a new
+  one. **⟳** restarts it at any time, **⌫** clears the screen.
+- **Keys:** while the terminal has focus, keys go to the shell, including Esc (for vim) and
+  arrows. ⌘C copies a selection (and sends Ctrl-C when nothing is selected), ⌘V pastes, ⌘K
+  clears. On Windows and Linux, Ctrl+C copies when text is selected, Ctrl+V pastes.
+
 ## Opening things
 
 - **Open in VS Code** (`O`) runs your configured editor command (`code` by default). If that isn't

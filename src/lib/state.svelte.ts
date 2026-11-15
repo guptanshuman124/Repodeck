@@ -1,6 +1,7 @@
 // App-wide reactive state. Components read from here; the Rust core pushes updates as events.
 import { listen } from "@tauri-apps/api/event";
 import { SvelteSet } from "svelte/reactivity";
+import { terms } from "./terminal.svelte";
 import {
   api,
   errText,
@@ -269,6 +270,7 @@ class AppState {
   private reloadTimer: ReturnType<typeof setTimeout> | null = null;
 
   async listen() {
+    await listen<{ id: number; code: number }>("terminal-exit", (e) => terms.onExit(e.payload.id, e.payload.code));
     await listen<RepoRow>("repo-updated", (e) => this.upsertRow(e.payload));
     await listen("repos-reload", () => {
       // Coalesce bursts from scans.

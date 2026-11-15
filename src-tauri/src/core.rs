@@ -72,6 +72,7 @@ pub struct CloneAccess {
 
 pub const SETTING_DEFAULTS: &[(&str, &str)] = &[
     ("editor", "code"),
+    ("terminal_shell", ""),
     ("fetch_concurrency", "auto"),
     ("fetch_prune", "false"),
     ("watch_threshold", "300"),

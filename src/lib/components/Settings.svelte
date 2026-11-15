@@ -109,6 +109,24 @@
   </section>
 
   <section>
+    <h2>Terminal</h2>
+    <label class="field">
+      Shell for the built-in terminal
+      <input
+        type="text"
+        class="mono"
+        placeholder="Your login shell"
+        value={s.terminal_shell ?? ""}
+        onchange={(e) => saveSetting("terminal_shell", e.currentTarget.value.trim())}
+      />
+      <span class="faint small"
+        >Leave empty to use your login shell (PowerShell on Windows). For example <code>/bin/zsh -l</code>,
+        <code>fish</code> or <code>pwsh</code>. It starts in the repo's folder. Restart a terminal to use a new shell.</span
+      >
+    </label>
+  </section>
+
+  <section>
     <h2>Refresh</h2>
     <div class="grid">
       <label class="field">

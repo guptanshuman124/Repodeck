@@ -1,6 +1,6 @@
 [package]
 name = "repodeck"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local-first Git repo and identity manager"
 authors = ["Anshuman Gupta"]
 edition = "2024"
@@ -34,6 +34,7 @@ parking_lot = "0.13.0"
 tauri-plugin-dialog = "2.8.3"
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 jwalk = "0.9.0"
+portable-pty = "0.9.0"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

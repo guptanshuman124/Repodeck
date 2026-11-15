@@ -10,6 +10,7 @@ mod remote_url;
 mod scanner;
 mod sshkeys;
 mod store;
+mod terminal;
 
 use tauri::Manager;
 
@@ -44,6 +45,7 @@ pub fn run() {
             core.try_open_with_keychain();
             core.start_background();
             app.manage(core);
+            app.manage(std::sync::Arc::new(terminal::Terminals::default()));
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -97,7 +99,18 @@ pub fn run() {
             commands::get_settings,
             commands::set_settings,
             commands::clear_graph_cache,
+            commands::terminal_open,
+            commands::terminal_write,
+            commands::terminal_resize,
+            commands::terminal_close,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running RepoDeck");
+        .build(tauri::generate_context!())
+        .expect("error while building RepoDeck")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event
+                && let Some(t) = app.try_state::<std::sync::Arc<terminal::Terminals>>()
+            {
+                t.close_all();
+            }
+        });
 }

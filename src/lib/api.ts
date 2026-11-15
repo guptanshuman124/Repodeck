@@ -1,5 +1,5 @@
 // Typed wrappers around the Rust core's allow-listed commands.
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 
 export type DbState =
   | "ready"
@@ -326,6 +326,16 @@ export const api = {
   openOnGithub: (repoId: number, branch?: string, commit?: string) =>
     invoke<void>("open_on_github", { repoId, branch: branch ?? null, commit: commit ?? null }),
   revealRepo: (repoId: number) => invoke<void>("reveal_repo", { repoId }),
+
+  /** Starts a shell in the repo's folder; `onData` receives its output bytes. Returns the session id. */
+  terminalOpen: (repoId: number, cols: number, rows: number, onData: (bytes: Uint8Array) => void) => {
+    const ch = new Channel<ArrayBuffer | number[]>();
+    ch.onmessage = (m) => onData(m instanceof ArrayBuffer ? new Uint8Array(m) : Uint8Array.from(m));
+    return invoke<number>("terminal_open", { repoId, cols, rows, onData: ch });
+  },
+  terminalWrite: (id: number, data: string) => invoke<void>("terminal_write", { id, data }),
+  terminalResize: (id: number, cols: number, rows: number) => invoke<void>("terminal_resize", { id, cols, rows }),
+  terminalClose: (id: number) => invoke<void>("terminal_close", { id }),
 
   getSettings: () => invoke<Settings>("get_settings"),
   setSettings: (values: Settings) => invoke<void>("set_settings", { values }),

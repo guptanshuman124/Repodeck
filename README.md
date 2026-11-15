@@ -6,8 +6,8 @@ commits and pushes with, and where each of those values comes from. It points ou
 commit as the wrong person, lets you switch a repo's account in one click, and checks which of your
 accounts can actually push where.
 
-It also gives you a commit graph per repo, "Fetch all", and one-key "Open in VS Code" / "Open on
-GitHub".
+It also gives you a commit graph per repo, "Fetch all", a built-in terminal that opens in the
+repo's folder, and one-key "Open in VS Code" / "Open on GitHub".
 
 - Runs entirely on your machine. No telemetry, no server, no account.
 - Only ever writes to a repo's own `.git/config`, and only after showing you the exact change.
@@ -69,8 +69,8 @@ You need Node 20.19+ and Rust (stable). On Linux you also need the WebKitGTK pac
    clones with that account's key. See
    [Cloning as an account](docs/HOW-IT-WORKS.md#cloning-as-an-account).
 
-Keyboard: `⌘K` / `Ctrl+K` search, `↑` `↓` move, `Enter` open, `O` open in VS Code,
-`G` open on GitHub, `⌘`-click / `Shift`-click / `⌘A` select several, `Esc` clear or close.
+Keyboard: `⌘K` / `Ctrl+K` search, `↑` `↓` move, `Enter` open, `T` terminal (`` ⌘` `` /
+`` Ctrl+` `` toggles it), `O` open in VS Code, `G` open on GitHub, `⌘`-click / `Shift`-click / `⌘A` select several, `Esc` clear or close.
 
 ## Documentation
 

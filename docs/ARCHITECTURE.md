@@ -10,7 +10,7 @@ How RepoDeck's code fits together. For what the app does from a user's point of 
 │                                                                  │
 │  WebView (Svelte UI)                Rust core (Tauri)            │
 │  ┌────────────────────┐   invoke   ┌──────────────────────────┐  │
-│  │ components/*.svelte │ ────────▶ │ commands.rs (43 commands) │  │
+│  │ components/*.svelte │ ────────▶ │ commands.rs (47 commands) │  │
 │  │ state.svelte.ts     │           │        │                  │  │
 │  │ api.ts              │ ◀──────── │ core.rs: jobs, pool,      │  │
 │  └────────────────────┘   events   │ watcher, scheduler        │  │
@@ -65,6 +65,7 @@ How RepoDeck's code fits together. For what the app does from a user's point of 
 | `accounts.rs` | Switch preview and apply, `whoami` over ssh, the dry-run push check, the clone access probe and clone arguments, authenticating a git command as an account (`with_auth`, `url_for`), classifying Git/SSH errors into statuses |
 | `graph.rs` | Reading the topo-ordered log and assigning lanes; changed files for a commit |
 | `sshkeys.rs` | Generating a new ed25519 key per account with `ssh-keygen` (never overwriting), and trusting github.com by checking `ssh-keyscan` output against GitHub's published fingerprints before appending to `known_hosts` |
+| `terminal.rs` | The built-in terminal: `Terminals` (managed state, separate from `Core`) holds one PTY session per shell via `portable-pty` (ConPTY on Windows). A reader thread streams output; a waiter thread reports the exit code. `close_all()` runs on app exit |
 | `remote_url.rs` | Parsing remote URLs into host / owner / repo; resolving ssh host aliases with `ssh -G` |
 | `git.rs` | Building `git` / `ssh` commands with a safe environment, running them with a timeout and cancel flag |
 | `error.rs` | `AppError`, serialised to the UI as a plain message |
@@ -95,7 +96,9 @@ files in `build/` that Tauri serves from disk.
 | `lib/state.svelte.ts` | `app`, one reactive object (Svelte 5 runes) with repos, accounts, roots, settings, filters, grouping, the single selection (`selectedId`, for the detail panel) and the multi-selection (`selectedIds`), running jobs. `listRows` derives the filtered list with nested repos under their parent and group headers; `visible` is the repo entries only. `suggestions` groups repos by their suggested account. `runFix()` carries out an issue's fix. `listen()` wires backend events into it |
 | `components/Main.svelte` | Toolbar, filters, tabs, keyboard shortcuts |
 | `components/RepoList.svelte` | Virtualised repo list with the account (▾) and ⋯ menus |
-| `components/RepoDetail.svelte` | Overview / Commit graph / Technical tabs for the selected repo |
+| `components/RepoDetail.svelte` | Overview / Commit graph / Technical tabs for the selected repo, or the terminal in their place |
+| `components/TerminalPane.svelte` | The terminal bar (folder, branch, who commits, clear / restart / close) and the mount point for the session's xterm |
+| `lib/terminal.svelte.ts` | `terms`: terminal sessions per repo (xterm.js instance, PTY id, exit state), kept outside components so shells survive switching repos; which repos show the terminal; key handling for copy / paste / clear; theme from the app's CSS variables |
 | `components/CommitGraph.svelte` | SVG lanes, paging, changed files |
 | `components/SwitchDialog.svelte` | Preview and confirm an account switch |
 | `components/BulkSwitchDialog.svelte` | One preview and confirm for switching many repos (multi-select or a suggestion strip) |
@@ -122,6 +125,13 @@ open arbitrary web pages either: `open_on_github` builds the URL from a repo's r
 `open_ssh_key_page` only opens `https://<host>/settings/ssh/new` for a validated host name.
 `generate_ssh_key` takes a label and email, never a path, and picks a fresh file name itself.
 
+The terminal follows the same rule: `terminal_open` takes a repo id and starts the shell in that
+repo's stored path; the shell program comes from the `terminal_shell` setting, never from the
+call. Output does not go through events: `terminal_open` takes a `Channel`, and the core sends raw
+bytes on it (`InvokeResponseBody::Raw`, an `ArrayBuffer` in JS), so multi-byte characters split
+across reads are decoded correctly by xterm. `terminal_write`, `terminal_resize` and
+`terminal_close` take the session id `terminal_open` returned.
+
 Long-running work (scan, fetch all, access scan, clone) returns a **job ID** immediately and continues
 on a background thread. `cancel_job(id)` sets that job's cancel flag.
 
@@ -132,6 +142,7 @@ on a background thread. `cancel_job(id)` sets that job's cancel flag.
 | `repo-updated` | One `RepoRow` | A repo was re-inspected | Replace that row in `app.repos` |
 | `repos-reload` | none | Repos were added or removed (scan, root change) | Reload the list (bursts coalesced) |
 | `job` | `JobEvent` (id, kind, done/total, label, summary, finished) | Job progress | Update `app.jobs`, which drives `JobBar` |
+| `terminal-exit` | `{ id, code }` | A terminal's shell ended | Mark the session exited; Enter starts a new shell |
 | `job-item` | `JobItem` (job id, repo, result) | Each repo finishes in a fetch or access scan, or a clone succeeds | Collect failures for "Retry failed"; select a freshly cloned repo |
 
 ### Permissions
@@ -293,6 +304,7 @@ the database.
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `editor` | `code` | Command for "Open in editor" |
+| `terminal_shell` | (empty) | Shell for the built-in terminal; empty = login shell (PowerShell on Windows) |
 | `fetch_concurrency` | `auto` | Parallel fetches (auto = 4, or 2 on low-end / battery saver) |
 | `fetch_prune` | `false` | Add `--prune` to Fetch all |
 | `watch_threshold` | `300` | Above this many repos, poll instead of watching |
@@ -314,6 +326,7 @@ the database.
 | `store` | Against a real temp database and repo: `.pub` paths are corrected or refused on save; owner and author rules produce `link_switch` / `switch` fixes and the suggested account; a missing key makes the active account's repos an error with `edit_account`; stored sign-in tests become health |
 | `commands` | A bulk switch skips a repo whose config changed after the preview and leaves it untouched |
 | `inspect` | Finding `[include]` / `[includeIf]` paths in a global config |
+| `terminal` (Unix) | A shell starts in the given folder, its output arrives, and its exit code is reported; the session is gone afterwards |
 | `scanner` | Walking, excludes, classification of nested / submodule / worktree |
 | `graph` | Lane assignment for merges and branches |
 | `accounts` (classification) | Mapping Git/SSH error text to statuses |
@@ -332,6 +345,8 @@ the database.
 | `argon2` | Passphrase key derivation |
 | `jwalk` | Parallel directory walk that can stop descending per folder |
 | `globset` | Exclude patterns |
+| `portable-pty` | Pseudo-terminals for the built-in terminal (ConPTY on Windows) |
 | `notify` 8 | File watching (FSEvents / ReadDirectoryChangesW / inotify) |
 | `svelte` 5, `@sveltejs/kit` + `adapter-static` | UI |
+| `@xterm/xterm`, `@xterm/addon-fit` | Terminal rendering, bundled with the app (no CDN) |
 | `@tauri-apps/api`, `@tauri-apps/plugin-dialog` | `invoke`, events, pickers from the UI |

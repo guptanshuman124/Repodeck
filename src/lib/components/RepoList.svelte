@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { terms } from "$lib/terminal.svelte";
   import { api, ago, type RepoRow } from "$lib/api";
   import { app } from "$lib/state.svelte";
 
@@ -142,6 +143,7 @@
             <span class="truncate title">{r.name}</span>
             {#if kindLabel(r)}<span class="badge">{kindLabel(r)}</span>{/if}
             {#if r.kind === "nested" && r.parent_name}<span class="badge">nested in {r.parent_name}</span>{/if}
+            {#if terms.isRunning(r.id)}<span class="termmark" title="A terminal is open for this repo">&gt;_</span>{/if}
           </div>
           <div class="sub truncate">
             {#if r.issues.length}
@@ -202,6 +204,7 @@
       <div class="sep"></div>
       <button class="item" onclick={() => { select(r); menu = null; }}>Link accounts…</button>
     {:else}
+      <button class="item" onclick={() => { app.selectedId = r.id; app.detailOpen = true; terms.show(r.id); menu = null; }}>Open terminal <kbd>T</kbd></button>
       <button class="item" disabled={r.is_bare} onclick={() => act(() => api.openInEditor(r.id))}>Open in VS Code <kbd>O</kbd></button>
       <button class="item" disabled={!r.remote?.web_url} onclick={() => act(() => api.openOnGithub(r.id))}>Open on GitHub <kbd>G</kbd></button>
       <button class="item" onclick={() => act(() => api.revealRepo(r.id))}>Show in folder</button>
@@ -219,6 +222,17 @@
 {/if}
 
 <style>
+  .termmark {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--ok);
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    padding: 0 3px;
+    line-height: 14px;
+    flex: none;
+  }
   .fix {
     height: 18px;
     padding: 0 7px;

@@ -2,9 +2,12 @@
   import { api, ago, checkWords, errText, scopeWords, type RepoDetail, type RepoRow } from "$lib/api";
   import { app } from "$lib/state.svelte";
   import CommitGraph from "./CommitGraph.svelte";
+  import TerminalPane from "./TerminalPane.svelte";
+  import { terms } from "$lib/terminal.svelte";
 
   let { repo }: { repo: RepoRow } = $props();
 
+  const TERM_KEY = /Mac/.test(navigator.platform) ? "⌘`" : "Ctrl+`";
   let tab = $state<"overview" | "graph" | "technical">("overview");
   let detail = $state<RepoDetail | null>(null);
   let error = $state<string | null>(null);
@@ -63,12 +66,22 @@
   }
 </script>
 
-<aside>
+<aside class:term={terms.isShown(repo.id)}>
   <div class="head">
     <div class="titles">
       <h2 class="truncate">{repo.name}</h2>
       <div class="mono faint truncate" title={repo.path}>{repo.path}</div>
     </div>
+    <button
+      class="termbtn"
+      class:on={terms.isShown(repo.id)}
+      aria-pressed={terms.isShown(repo.id)}
+      title={terms.isShown(repo.id) ? `Back to details (${TERM_KEY})` : `Open a terminal in this folder (T, ${TERM_KEY})`}
+      onclick={() => terms.toggle(repo.id)}
+    >
+      <span class="prompt">&gt;_</span> Terminal
+      {#if terms.isRunning(repo.id) && !terms.isShown(repo.id)}<span class="live" aria-label="running"></span>{/if}
+    </button>
     <button class="primary" disabled={repo.is_bare} onclick={() => app.run(() => api.openInEditor(repo.id))}>Open in VS Code</button>
     <button disabled={!repo.remote?.web_url} onclick={() => app.run(() => api.openOnGithub(repo.id, repo.head_branch ?? undefined))}>
       Open on GitHub
@@ -76,6 +89,9 @@
     <button class="ghost close" onclick={() => (app.detailOpen = false)} aria-label="Close">✕</button>
   </div>
 
+  {#if terms.isShown(repo.id)}
+    <TerminalPane {repo} />
+  {:else}
   <div class="tabs">
     <button class="ghost" class:on={tab === "overview"} onclick={() => (tab = "overview")}>Overview</button>
     <button class="ghost" class:on={tab === "graph"} onclick={() => (tab = "graph")}>Commit graph</button>
@@ -280,6 +296,7 @@
       {/if}
     </div>
   {/if}
+  {/if}
 </aside>
 
 <style>
@@ -290,6 +307,34 @@
     grid-template-rows: auto auto 1fr;
     min-height: 0;
     min-width: 0;
+  }
+  aside.term {
+    grid-template-rows: auto 1fr;
+  }
+  .termbtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .termbtn .prompt {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-2);
+  }
+  .termbtn.on {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .termbtn.on .prompt {
+    color: var(--accent);
+  }
+  .termbtn .live {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ok);
   }
   .head {
     display: flex;

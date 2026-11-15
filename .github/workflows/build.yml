@@ -1,6 +1,7 @@
 # Builds RepoDeck installers for macOS, Windows and Linux on native runners.
-# Runs on version tags (v*) and on demand. Installers are attached to the run as artifacts;
-# on a tag they are also attached to a draft GitHub release.
+# Runs on version tags (v*) and on demand. Installers are attached to the run as artifacts.
+# On a tag, the `release` job first creates ONE draft release (notes from CHANGELOG.md), and every
+# build job uploads its installers into that same draft. Don't create the release by hand.
 name: build
 
 on:
@@ -12,7 +13,29 @@ permissions:
   contents: write
 
 jobs:
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          VER="${TAG#v}"
+          awk -v h="# RepoDeck $VER" '$0 == h {f=1; next} /^# RepoDeck / {f=0} f' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "Release $VER" > notes.md
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG already exists; builds will upload into it."
+          else
+            gh release create "$TAG" --draft --verify-tag --title "RepoDeck $VER" --notes-file notes.md
+          fi
+
   build:
+    needs: release
+    # Still runs on manual runs, where `release` is skipped.
+    if: ${{ !failure() && !cancelled() }}
     strategy:
       fail-fast: false
       matrix:
@@ -36,9 +59,9 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -76,7 +99,7 @@ jobs:
       - name: Build installers
         run: npm run tauri build -- ${{ matrix.args }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: repodeck-${{ matrix.name }}
           if-no-files-found: error
@@ -88,15 +111,16 @@ jobs:
             ${{ matrix.bundle }}/rpm/*.rpm
             ${{ matrix.bundle }}/appimage/*.AppImage
 
-      - name: Attach to draft release
+      - name: Upload to the draft release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: true
-          files: |
-            ${{ matrix.bundle }}/dmg/*.dmg
-            ${{ matrix.bundle }}/msi/*.msi
-            ${{ matrix.bundle }}/nsis/*.exe
-            ${{ matrix.bundle }}/deb/*.deb
-            ${{ matrix.bundle }}/rpm/*.rpm
-            ${{ matrix.bundle }}/appimage/*.AppImage
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          B: ${{ matrix.bundle }}
+        run: |
+          shopt -s nullglob
+          files=("$B"/dmg/*.dmg "$B"/msi/*.msi "$B"/nsis/*.exe "$B"/deb/*.deb "$B"/rpm/*.rpm "$B"/appimage/*.AppImage)
+          if [ ${#files[@]} -eq 0 ]; then echo "No installers found in $B"; exit 1; fi
+          printf 'Uploading %s\n' "${files[@]}"
+          gh release upload "$TAG" "${files[@]}" --clobber

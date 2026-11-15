@@ -44,6 +44,10 @@ const COMMANDS: &[&str] = &[
     "get_settings",
     "set_settings",
     "clear_graph_cache",
+    "terminal_open",
+    "terminal_write",
+    "terminal_resize",
+    "terminal_close",
 ];
 
 fn main() {

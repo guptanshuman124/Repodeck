@@ -52,6 +52,10 @@
     "allow-list-ssh-keys",
     "allow-get-settings",
     "allow-set-settings",
-    "allow-clear-graph-cache"
+    "allow-clear-graph-cache",
+    "allow-terminal-open",
+    "allow-terminal-write",
+    "allow-terminal-resize",
+    "allow-terminal-close"
   ]
 }

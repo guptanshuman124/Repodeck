@@ -6,11 +6,13 @@ use crate::core::{Core, DbState, SETTING_DEFAULTS};
 use crate::error::{AppError, AppResult};
 use crate::graph::{self, ChangedFile, Row};
 use crate::store::{self, Account, MatrixCell, RepoDetail, RepoRow, ScanRoot};
+use crate::terminal::Terminals;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use tauri::State;
+use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri_plugin_opener::OpenerExt;
 
 type S<'a> = State<'a, Arc<Core>>;
@@ -710,6 +712,61 @@ pub fn reveal_repo(core: S<'_>, repo_id: i64) -> AppResult<()> {
         .opener()
         .reveal_item_in_dir(&r.path)
         .map_err(|e| AppError::msg(e.to_string()))
+}
+
+// ---------- terminal ----------
+
+#[derive(Serialize, Clone)]
+struct TerminalExit {
+    id: u32,
+    code: u32,
+}
+
+/// Starts a shell in the repo's folder. Output streams to `on_data` as raw bytes.
+#[tauri::command]
+pub fn terminal_open(
+    core: S<'_>,
+    terms: State<'_, Arc<Terminals>>,
+    repo_id: i64,
+    cols: u16,
+    rows: u16,
+    on_data: Channel<InvokeResponseBody>,
+) -> AppResult<u32> {
+    let path = store::repo_ref(&*core.db()?, repo_id)?.path;
+    let shell = core.setting("terminal_shell");
+    let app = core.app.clone();
+    terms.inner().open(
+        &path,
+        &shell,
+        cols,
+        rows,
+        move |bytes| {
+            let _ = on_data.send(InvokeResponseBody::Raw(bytes));
+        },
+        move |id, code| {
+            let _ = tauri::Emitter::emit(&app, "terminal-exit", TerminalExit { id, code });
+        },
+    )
+}
+
+#[tauri::command]
+pub fn terminal_write(terms: State<'_, Arc<Terminals>>, id: u32, data: String) -> AppResult<()> {
+    terms.write(id, data.as_bytes())
+}
+
+#[tauri::command]
+pub fn terminal_resize(
+    terms: State<'_, Arc<Terminals>>,
+    id: u32,
+    cols: u16,
+    rows: u16,
+) -> AppResult<()> {
+    terms.resize(id, cols, rows)
+}
+
+#[tauri::command]
+pub fn terminal_close(terms: State<'_, Arc<Terminals>>, id: u32) {
+    terms.close(id)
 }
 
 // ---------- settings ----------
